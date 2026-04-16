@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APIM Live Trace Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #0e1116;
+  --bg2:      #161b22;
+  --bg3:      #1c2128;
+  --bg4:      #22272e;
+  --bg5:      #2d333b;
+  --line:     #30363d;
+  --line2:    #444c56;
+  --tx:       #cdd9e5;
+  --tx2:      #768390;
+  --tx3:      #545d68;
+  --blue:     #539bf5;
+  --blue-bg:  #1b2a3d;
+  --blue-bdr: #1f3a5c;
+  --green:    #57ab5a;
+  --green-bg: #1a2d1e;
+  --green-bdr:#1e3a22;
+  --amber:    #c69026;
+  --amber-bg: #2b2007;
+  --amber-bdr:#3d2d08;
+  --red:      #e5534b;
+  --red-bg:   #2d1217;
+  --red-bdr:  #4a1c20;
+  --purple:   #986ee2;
+  --purple-bg:#1f1635;
+  --purple-bdr:#2d1f50;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --r: 5px; --rlg: 8px;
+}
+html { font-size: 13px; }
+body { font-family: var(--sans); background: var(--bg); color: var(--tx); min-height: 100vh; line-height: 1.5; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 3px; }
+@keyframes fadeSlide { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+.anim { animation: fadeSlide .2s ease forwards; }
+
+/* NAVBAR */
+.nav {
+  height: 48px; display: flex; align-items: center; gap: 10px;
+  padding: 0 18px; background: var(--bg2); border-bottom: 1px solid var(--line);
+  flex-shrink: 0; position: sticky; top:0; z-index:100;
+}
+.nav-logomark {
+  width:26px; height:26px; border-radius:6px; background:var(--blue);
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+.nav-logomark svg { width:14px; height:14px; fill:none; stroke:#fff; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.nav-wordmark { font-size:13px; font-weight:500; letter-spacing:.01em; }
+.nav-pipe { width:1px; height:16px; background:var(--line2); }
+.nav-sub { font-size:12px; color:var(--tx2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:280px; }
+.nav-sp { flex:1; }
+
+/* BUTTONS */
+.btn {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:5px 12px; border-radius:var(--r); cursor:pointer;
+  font-family:var(--sans); font-size:12px; font-weight:400;
+  border:1px solid var(--line2); background:var(--bg3); color:var(--tx);
+  transition:background .12s; white-space:nowrap;
+}
+.btn:hover { background:var(--bg4); }
+.btn:active { transform:scale(.98); }
+.btn svg { width:12px; height:12px; flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.btn-primary { background:var(--blue); border-color:var(--blue); color:#fff; }
+.btn-primary:hover { background:#6aabf7; border-color:#6aabf7; }
+.btn-ghost { background:transparent; border-color:transparent; color:var(--tx2); }
+.btn-ghost:hover { background:var(--bg3); color:var(--tx); border-color:transparent; }
+
+/* PILLS */
+.pill { display:inline-block; padding:1px 8px; border-radius:20px; font-size:11px; font-weight:500; font-family:var(--mono); white-space:nowrap; border:1px solid; }
+.pill-blue   { background:var(--blue-bg);   color:var(--blue);   border-color:var(--blue-bdr); }
+.pill-green  { background:var(--green-bg);  color:var(--green);  border-color:var(--green-bdr); }
+.pill-red    { background:var(--red-bg);    color:var(--red);    border-color:var(--red-bdr); }
+.pill-amber  { background:var(--amber-bg);  color:var(--amber);  border-color:var(--amber-bdr); }
+.pill-purple { background:var(--purple-bg); color:var(--purple); border-color:var(--purple-bdr); }
+.pill-gray   { background:var(--bg4);       color:var(--tx2);    border-color:var(--line2); }
+
+/* PASTE SCREEN */
+#screen-paste { display:flex; flex-direction:column; min-height:100vh; }
+.paste-hero { flex:1; display:flex; align-items:center; justify-content:center; padding:40px 20px; }
+.paste-card { width:100%; max-width:760px; background:var(--bg2); border:1px solid var(--line); border-radius:var(--rlg); overflow:hidden; }
+.paste-card-hd { padding:16px 20px; border-bottom:1px solid var(--line); display:flex; align-items:flex-start; gap:12px; }
+.paste-icon { width:36px; height:36px; border-radius:8px; background:var(--blue-bg); border:1px solid var(--blue-bdr); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.paste-icon svg { width:18px; height:18px; fill:none; stroke:var(--blue); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.paste-card-hd h2 { font-size:14px; font-weight:500; margin-bottom:2px; }
+.paste-card-hd p { font-size:12px; color:var(--tx2); line-height:1.5; }
+.paste-card-body { padding:18px 20px; }
+.schema-chips { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:12px; }
+.sch-chip { font-size:11px; font-family:var(--mono); padding:2px 8px; border-radius:4px; background:var(--bg3); border:1px solid var(--line); color:var(--tx2); }
+textarea { width:100%; height:220px; resize:vertical; font-family:var(--mono); font-size:11.5px; line-height:1.6; padding:12px 14px; border-radius:var(--r); border:1px solid var(--line); background:var(--bg); color:var(--tx); outline:none; transition:border-color .15s; }
+textarea:focus { border-color:var(--blue); }
+textarea::placeholder { color:var(--tx3); }
+.paste-actions { display:flex; gap:8px; align-items:center; margin-top:12px; }
+.err-inline { font-size:12px; color:var(--red); font-family:var(--mono); }
+
+/* TRACE SCREEN */
+#screen-trace { display:none; flex-direction:column; height:100vh; overflow:hidden; }
+
+.trace-topbar { padding:9px 18px; background:var(--bg2); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex-shrink:0; }
+.trace-svc { font-size:11px; font-family:var(--mono); color:var(--tx3); }
+.trace-url { font-size:11px; font-family:var(--mono); color:var(--blue); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:360px; }
+
+.stats-row { display:flex; border-bottom:1px solid var(--line); background:var(--bg2); flex-shrink:0; }
+.stat-cell { flex:1; padding:9px 16px; border-right:1px solid var(--line); }
+.stat-cell:last-child { border-right:none; }
+.stat-lbl { font-size:10px; color:var(--tx3); letter-spacing:.06em; text-transform:uppercase; margin-bottom:2px; }
+.stat-val { font-size:18px; font-weight:500; font-family:var(--mono); }
+
+.err-banner { display:none; padding:7px 16px; background:var(--red-bg); border-bottom:1px solid var(--red-bdr); color:var(--red); font-size:12px; align-items:center; gap:7px; font-family:var(--mono); flex-shrink:0; }
+.err-banner.on { display:flex; }
+.err-banner svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; flex-shrink:0; }
+
+.view-bar { display:flex; align-items:center; padding:0 14px; gap:1px; background:var(--bg); border-bottom:1px solid var(--line); flex-shrink:0; }
+.vtab { padding:8px 14px; font-size:12px; cursor:pointer; border:none; background:transparent; color:var(--tx2); font-family:var(--sans); border-bottom:2px solid transparent; transition:color .12s; margin-bottom:-1px; display:inline-flex; align-items:center; gap:4px; }
+.vtab:hover { color:var(--tx); }
+.vtab.on { color:var(--tx); border-bottom-color:var(--blue); font-weight:500; }
+.vtab svg { width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+
+.trace-body { flex:1; display:flex; min-height:0; overflow:hidden; }
+
+/* FLOW VIEW */
+#view-flow { flex:1; display:flex; min-height:0; overflow:hidden; }
+
+.pipeline-col { width:400px; flex-shrink:0; overflow-y:auto; padding:12px 10px; border-right:1px solid var(--line); }
+
+.stage-band { margin-bottom:4px; }
+.stage-band-hd { display:flex; align-items:center; gap:7px; padding:5px 10px 4px; margin-bottom:3px; position:sticky; top:0; z-index:10; background:var(--bg); border-radius:var(--r); }
+.stage-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.stage-lbl { font-size:10px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; }
+.stage-count { font-size:10px; color:var(--tx3); margin-left:auto; }
+
+.entry-row { display:flex; margin-bottom:2px; border-radius:var(--r); cursor:pointer; border:1px solid transparent; overflow:hidden; transition:border-color .1s, background .1s; }
+.entry-row:hover .entry-body { background:var(--bg3); }
+.entry-row.sel { border-color:var(--blue) !important; background:var(--blue-bg) !important; }
+.entry-row.sel .entry-body { background:transparent !important; }
+.entry-accent { width:3px; flex-shrink:0; }
+.entry-body { flex:1; padding:7px 10px; min-width:0; }
+.entry-top { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+.entry-source { font-size:12px; font-weight:500; font-family:var(--mono); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.entry-elapsed { font-size:10px; font-family:var(--mono); color:var(--tx3); white-space:nowrap; flex-shrink:0; }
+.entry-bar-wrap { height:2px; background:var(--bg5); border-radius:2px; margin-bottom:4px; }
+.entry-bar { height:2px; border-radius:2px; min-width:2px; }
+.entry-summary { font-size:11px; color:var(--tx2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.entry-sdot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+
+.stage-conn { display:flex; align-items:center; gap:6px; padding:3px 10px; margin:4px 0; }
+.conn-line { flex:1; height:1px; border-top:1px dashed var(--line2); }
+.conn-arrow { font-size:10px; color:var(--tx3); display:flex; align-items:center; gap:3px; }
+.conn-arrow svg { width:10px; height:10px; fill:none; stroke:currentColor; stroke-width:1.4; stroke-linecap:round; stroke-linejoin:round; }
+
+/* DETAIL PANEL */
+.detail-col { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; background:var(--bg2); }
+.detail-hd { padding:9px 14px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:7px; flex-shrink:0; }
+.detail-hd-icon { width:22px; height:22px; border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid var(--line); }
+.detail-hd-icon svg { width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; }
+.detail-hd-source { font-size:12px; font-weight:500; font-family:var(--mono); }
+.detail-hd-stage { font-size:11px; color:var(--tx2); }
+.detail-hd-elapsed { margin-left:auto; font-size:11px; font-family:var(--mono); color:var(--amber); }
+
+.detail-tabs { display:flex; border-bottom:1px solid var(--line); flex-shrink:0; }
+.dtab { padding:7px 14px; font-size:12px; background:transparent; border:none; color:var(--tx2); cursor:pointer; font-family:var(--sans); border-bottom:2px solid transparent; transition:color .12s; margin-bottom:-1px; }
+.dtab:hover { color:var(--tx); }
+.dtab.on { color:var(--tx); border-bottom-color:var(--blue); }
+
+.detail-body { flex:1; overflow-y:auto; padding:14px 16px; }
+
+.empty-msg { display:flex; flex-direction:column; align-items:center; justify-content:center; height:180px; gap:10px; color:var(--tx3); }
+.empty-msg svg { width:32px; height:32px; fill:none; stroke:currentColor; stroke-width:1.2; opacity:.3; }
+.empty-msg p { font-size:12px; }
+
+.kv-sec { margin-bottom:14px; }
+.kv-sec-title { font-size:10px; font-weight:500; color:var(--tx3); letter-spacing:.09em; text-transform:uppercase; padding-bottom:6px; margin-bottom:8px; border-bottom:1px solid var(--line); }
+.kv-row { display:flex; gap:10px; margin-bottom:6px; align-items:flex-start; }
+.kv-k { font-size:11px; color:var(--tx2); width:110px; flex-shrink:0; padding-top:1px; font-family:var(--mono); }
+.kv-v { font-size:12px; font-family:var(--mono); color:var(--tx); flex:1; word-break:break-all; line-height:1.55; }
+.kv-v.dim { color:var(--tx2); }
+.kv-v.blue { color:var(--blue); }
+.kv-v.green { color:var(--green); }
+.kv-v.red { color:var(--red); }
+.kv-v.amber { color:var(--amber); }
+
+pre.cb { background:var(--bg); border:1px solid var(--line); border-radius:var(--r); padding:10px 12px; font-size:11px; font-family:var(--mono); white-space:pre-wrap; word-break:break-all; color:var(--tx); line-height:1.6; overflow:auto; max-height:300px; margin-top:4px; }
+
+.hdrs-table { width:100%; border-collapse:collapse; font-size:11px; }
+.hdrs-table tr { border-bottom:1px solid var(--line); }
+.hdrs-table tr:last-child { border-bottom:none; }
+.hdrs-table td { padding:5px 0; vertical-align:top; font-family:var(--mono); }
+.hdrs-table td:first-child { color:var(--tx2); width:160px; padding-right:10px; word-break:break-all; }
+.hdrs-table td:last-child { color:var(--tx); word-break:break-all; }
+
+/* WATERFALL */
+#view-waterfall { display:none; flex:1; overflow-y:auto; padding:16px 18px; }
+.wf-legend { display:flex; gap:14px; margin-bottom:14px; flex-wrap:wrap; }
+.wf-leg { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--tx2); }
+.wf-leg-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+.wf-axis-row { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.wf-name-hd { width:170px; flex-shrink:0; font-size:10px; color:var(--tx3); }
+.wf-track-hd { flex:1; display:flex; justify-content:space-between; }
+.wf-ax-lbl { font-size:10px; color:var(--tx3); font-family:var(--mono); }
+.wf-dur-hd { width:52px; flex-shrink:0; }
+
+.wf-stage-block { margin-bottom:18px; }
+.wf-stage-hd { display:flex; align-items:center; gap:6px; margin-bottom:7px; padding-bottom:5px; border-bottom:1px solid var(--line); }
+.wf-stage-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.wf-stage-lbl { font-size:10px; font-weight:500; letter-spacing:.09em; text-transform:uppercase; }
+.wf-stage-total { margin-left:auto; font-size:11px; font-family:var(--mono); color:var(--tx2); }
+
+.wf-row { display:flex; align-items:center; gap:8px; margin-bottom:3px; cursor:pointer; border-radius:3px; padding:2px 0; }
+.wf-row:hover { background:var(--bg3); }
+.wf-row-name { width:170px; flex-shrink:0; font-size:11px; font-family:var(--mono); color:var(--tx2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.wf-track { flex:1; height:18px; background:var(--bg3); border-radius:3px; position:relative; }
+.wf-seg { position:absolute; top:3px; height:12px; border-radius:2px; min-width:3px; opacity:.85; }
+.wf-dur { width:52px; flex-shrink:0; font-size:10px; font-family:var(--mono); color:var(--tx3); text-align:right; }
+
+/* REQ/RES */
+#view-reqres { display:none; flex:1; overflow-y:auto; padding:16px 18px; }
+.rr-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+@media (max-width:900px) { .rr-grid { grid-template-columns:1fr; } }
+.rr-card { background:var(--bg2); border:1px solid var(--line); border-radius:var(--rlg); overflow:hidden; }
+.rr-card-hd { padding:9px 14px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:7px; font-size:11px; font-weight:500; letter-spacing:.05em; text-transform:uppercase; color:var(--tx2); background:var(--bg3); }
+.rr-card-hd svg { width:12px; height:12px; fill:none; stroke:currentColor; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.rr-card-body { padding:14px; }
+.rr-sec { margin-bottom:12px; }
+.rr-sec:last-child { margin-bottom:0; }
+.rr-sec-title { font-size:10px; color:var(--tx3); letter-spacing:.07em; text-transform:uppercase; margin-bottom:7px; }
+</style>
+</head>
+<body>
+
+<!-- PASTE SCREEN -->
+<div id="screen-paste">
+  <nav class="nav">
+    <div class="nav-logomark"><svg viewBox="0 0 14 14"><polyline points="2,4 7,9 12,4"/><line x1="2" y1="10" x2="12" y2="10"/></svg></div>
+    <span class="nav-wordmark">APIM Live Trace</span>
+    <div class="nav-pipe"></div>
+    <span class="nav-sub">Azure API Management — traceEntries format</span>
+    <div class="nav-sp"></div>
+  </nav>
+  <div class="paste-hero">
+    <div class="paste-card anim">
+      <div class="paste-card-hd">
+        <div class="paste-icon"><svg viewBox="0 0 18 18"><rect x="2" y="2" width="14" height="14" rx="2"/><polyline points="5,9 8,12 13,6"/></svg></div>
+        <div style="flex:1">
+          <h2>Import APIM trace JSON</h2>
+          <p>Paste the full <code style="font-family:var(--mono);font-size:11px;color:var(--blue)">traceEntries</code> JSON captured from Azure APIM — supports <code style="font-family:var(--mono);font-size:11px;color:var(--purple)">inbound</code>, <code style="font-family:var(--mono);font-size:11px;color:var(--red)">on-error</code>, and <code style="font-family:var(--mono);font-size:11px;color:var(--green)">outbound</code> sections.</p>
+        </div>
+        <button class="btn btn-ghost" onclick="loadSample()">
+          <svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5"/><polyline points="6,3.5 6,6.5 8,6.5"/></svg>
+          Sample
+        </button>
+      </div>
+      <div class="paste-card-body">
+        <div class="schema-chips">
+          <span class="sch-chip">serviceName</span>
+          <span class="sch-chip">traceId</span>
+          <span class="sch-chip">traceEntries.inbound[]</span>
+          <span class="sch-chip">traceEntries.on-error[]</span>
+          <span class="sch-chip">traceEntries.outbound[]</span>
+          <span class="sch-chip">source</span>
+          <span class="sch-chip">elapsed</span>
+          <span class="sch-chip">data</span>
+        </div>
+        <textarea id="trace-in" placeholder='{"serviceName":"vss-zue1-unit-api-001","traceId":"422dcc14-...","traceEntries":{"inbound":[{"source":"api-inspector","elapsed":"00:00:00.0004637","data":{...}}],"on-error":[...],"outbound":[...]}}'></textarea>
+        <div class="paste-actions">
+          <button class="btn btn-primary" onclick="go()">
+            <svg viewBox="0 0 12 12"><polygon points="2,2 10,6 2,10"/></svg>
+            Analyze trace
+          </button>
+          <button class="btn" onclick="loadSample()">
+            <svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1.5"/><line x1="4.5" y1="5" x2="7.5" y2="5"/><line x1="4.5" y1="7" x2="6.5" y2="7"/></svg>
+            Load demo
+          </button>
+          <span id="err-msg" class="err-inline"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TRACE SCREEN -->
+<div id="screen-trace">
+  <nav class="nav">
+    <div class="nav-logomark"><svg viewBox="0 0 14 14"><polyline points="2,4 7,9 12,4"/><line x1="2" y1="10" x2="12" y2="10"/></svg></div>
+    <span class="nav-wordmark">APIM Live Trace</span>
+    <div class="nav-pipe"></div>
+    <span id="nav-svc" class="nav-sub"></span>
+    <div class="nav-sp"></div>
+    <button class="btn btn-ghost" onclick="reset()">
+      <svg viewBox="0 0 12 12"><polyline points="8,2 4,6 8,10"/></svg>
+      New trace
+    </button>
+  </nav>
+
+  <div class="trace-topbar">
+    <span id="tb-tid" class="trace-svc"></span>
+    <div class="nav-pipe"></div>
+    <span id="tb-url" class="trace-url"></span>
+    <div class="nav-sp"></div>
+    <span id="tb-method" class="pill pill-blue" style="display:none"></span>
+    <span id="tb-status" class="pill" style="display:none;margin-left:5px"></span>
+  </div>
+
+  <div class="stats-row" id="stats-row"></div>
+  <div class="err-banner" id="err-banner">
+    <svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5"/><line x1="6" y1="4" x2="6" y2="6.5"/><circle cx="6" cy="8.5" r=".4" fill="currentColor"/></svg>
+    <span id="err-banner-text"></span>
+  </div>
+
+  <div class="view-bar">
+    <button class="vtab on" id="vtab-flow" onclick="switchView('flow',this)">
+      <svg viewBox="0 0 12 12"><rect x="1" y="2" width="10" height="2" rx="1"/><rect x="1" y="5.5" width="7" height="2" rx="1"/><rect x="1" y="9" width="8.5" height="2" rx="1"/></svg>
+      Flow
+    </button>
+    <button class="vtab" id="vtab-waterfall" onclick="switchView('waterfall',this)">
+      <svg viewBox="0 0 12 12"><rect x="1" y="2" width="4" height="1.5" rx=".5"/><rect x="1" y="5" width="8" height="1.5" rx=".5"/><rect x="1" y="8" width="5.5" height="1.5" rx=".5"/></svg>
+      Waterfall
+    </button>
+    <button class="vtab" id="vtab-reqres" onclick="switchView('reqres',this)">
+      <svg viewBox="0 0 12 12"><path d="M2 6h8M8 4l2 2-2 2M4 4L2 6l2 2"/></svg>
+      Req / Res
+    </button>
+  </div>
+
+  <div class="trace-body">
+    <div id="view-flow">
+      <div class="pipeline-col" id="pipeline-col"></div>
+      <div class="detail-col">
+        <div class="detail-hd" id="detail-hd">
+          <div class="detail-hd-icon" style="background:var(--bg4)">
+            <svg viewBox="0 0 12 12" stroke="var(--tx2)"><rect x="1.5" y="1.5" width="9" height="9" rx="1.5"/><line x1="3.5" y1="4.5" x2="8.5" y2="4.5"/><line x1="3.5" y1="6.5" x2="8.5" y2="6.5"/><line x1="3.5" y1="8.5" x2="6" y2="8.5"/></svg>
+          </div>
+          <span class="detail-hd-source" style="color:var(--tx2)">Step inspector</span>
+        </div>
+        <div class="detail-tabs">
+          <button class="dtab on" onclick="dTab('info',this)">Details</button>
+          <button class="dtab" onclick="dTab('payload',this)">Payload</button>
+          <button class="dtab" onclick="dTab('headers',this)">Headers</button>
+        </div>
+        <div class="detail-body" id="tab-info">
+          <div class="empty-msg">
+            <svg viewBox="0 0 32 32"><rect x="5" y="3" width="22" height="26" rx="3"/><line x1="9" y1="11" x2="23" y2="11"/><line x1="9" y1="16" x2="23" y2="16"/><line x1="9" y1="21" x2="17" y2="21"/></svg>
+            <p>Select a step from the pipeline</p>
+          </div>
+        </div>
+        <div class="detail-body" id="tab-payload" style="display:none">
+          <div class="empty-msg"><svg viewBox="0 0 32 32"><rect x="5" y="3" width="22" height="26" rx="3"/><line x1="9" y1="11" x2="23" y2="11"/></svg><p>No payload for this step</p></div>
+        </div>
+        <div class="detail-body" id="tab-headers" style="display:none">
+          <div class="empty-msg"><svg viewBox="0 0 32 32"><rect x="5" y="3" width="22" height="26" rx="3"/><line x1="9" y1="11" x2="23" y2="11"/></svg><p>No headers for this step</p></div>
+        </div>
+      </div>
+    </div>
+    <div id="view-waterfall"></div>
+    <div id="view-reqres"></div>
+  </div>
+</div>
+
+<script>
+/* ══ SAMPLE DATA (real traceEntries format) ══ */
+const SAMPLE = {"serviceName":"vss-zue1-unit-api-001","traceId":"422dcc14-f0f0-4f52-be23-47fcfcb3f322","traceEntries":{"inbound":[{"source":"api-inspector","timestamp":"2026-04-14T14:29:03.2961152Z","elapsed":"00:00:00.0004637","data":{"request":{"scheme":{"received":"https","original":"https"},"method":"GET","url":"https://apis-a.apim.zue1.unit.gluedomain.io/internal/mdmdigitalparty/party/search/943860332","headers":[{"name":"X-AppGW-Trace-Id","value":"0e5efdc111621bf9c60ba7ecb1763e9b"},{"name":"X-ORIGINAL-HOST","value":"apis-int.unit.gluedomain.io"},{"name":"Ocp-Apim-Subscription-Key","value":"7ff5327c07f44d4ca8e7f042b6487bc8"},{"name":"App-Authorization","value":"Basic NmY5M2MzOTEtNjU2Yi00Nzc2LTgwZjQtMDM4M2IxYjg2ZjQyOlNLajhRflR1VE9EN0NSZkVFSV90SjRSd1pQZXVIaXM0bHR1UEliWlYK"},{"name":"X-Forwarded-For","value":"10.119.233.238:56840"},{"name":"Accept","value":"*/*"},{"name":"User-Agent","value":"PostmanRuntime/7.51.1"}]}}},{"source":"api-inspector","timestamp":"2026-04-14T14:29:03.2961152Z","elapsed":"00:00:00.0004707","data":{"configuration":{"api":{"from":"/internal/mdmdigitalparty","to":null,"version":null,"revision":"2"},"operation":{"method":"GET","uriTemplate":"/*"},"user":"-","product":"-"}}},{"source":"graphql-configuration-setup","timestamp":"2026-04-14T14:29:03.2961152Z","elapsed":"00:00:00.0005552","data":"Skipping GraphQL creation for non-GraphQL API request"},{"source":"cors","timestamp":"2026-04-14T14:29:03.2961152Z","elapsed":"00:00:00.0006153","data":"Origin header was missing or empty and the request was classified as not cross-domain. CORS policy was not applied."},{"source":"set-variable","timestamp":"2026-04-14T14:29:03.2961152Z","elapsed":"00:00:00.0006568","data":{"message":"Context variable was successfully set.","name":"appauthheader","value":"Basic NmY5M2MzOTEtNjU2Yi00Nzc2LTgwZjQtMDM4M2IxYjg2ZjQyOlNLajhRflR1VE9EN0NSZkVFSV90SjRSd1pQZXVIaXM0bHR1UEliWlYK"}},{"source":"set-variable","timestamp":"2026-04-14T14:29:03.2961152Z","elapsed":"00:00:00.0006644","data":{"message":"Context variable was successfully set.","name":"authheader","value":""}},{"source":"set-header","timestamp":"2026-04-14T14:29:03.2961152Z","elapsed":"00:00:00.0007006","data":{"message":"Specified value was assigned to the header (see below).","header":{"name":"Authorization","value":"Basic NmY5M2MzOTEt..."}}},{"source":"set-method","timestamp":"2026-04-14T14:29:03.2961152Z","elapsed":"00:00:00.0007427","data":"Request method was set to POST"},{"source":"set-body","timestamp":"2026-04-14T14:29:03.2961152Z","elapsed":"00:00:00.0007918","data":"Set-Body policy was applied"},{"source":"send-request","timestamp":"2026-04-14T14:29:03.2961152Z","elapsed":"00:00:00.0010439","data":{"message":"Request is being forwarded to the backend service. Timeout set to 20 seconds","request":{"method":"POST","url":"https://login.microsoftonline.com/e3054106-a46a-4dc0-b86d-2ba84a24cdc4/oauth2/v2.0/token","headers":[{"name":"Authorization","value":"Basic NmY5M2MzOTEt..."},{"name":"Content-Type","value":"application/x-www-form-urlencoded"},{"name":"X-Forwarded-For","value":"10.116.52.5"}]}}},{"source":"send-request","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3003266","data":{"response":{"status":{"code":401,"reason":"Unauthorized"},"headers":[{"name":"Content-Type","value":"application/json; charset=utf-8"},{"name":"x-ms-request-id","value":"e6a40293-29cf-4d2f-bbc6-1deca6d21c00"},{"name":"Cache-Control","value":"no-store, no-cache"}]}}},{"source":"set-variable","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3005640","data":{"message":"Expression was successfully evaluated.","expression":"((IResponse)context.Variables[\"accessTokenResult\"]).Body.As<JObject>()","value":{"error":"invalid_client","error_description":"AADSTS7000215: Invalid client secret provided.","error_codes":[7000215],"timestamp":"2026-04-14 14:29:03Z","trace_id":"e6a40293-29cf-4d2f-bbc6-1deca6d21c00","error_uri":"https://login.microsoftonline.com/error?code=7000215"}}},{"source":"set-variable","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3006058","data":{"message":"Context variable was successfully set.","name":"bearerToken","value":null}},{"source":"set-header","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3006368","data":{"message":"Specified value was assigned to the header (see below).","header":{"name":"Authorization","value":"Bearer "}}},{"source":"set-variable","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3006437","data":{"message":"Context variable was successfully set.","name":"sourceauth","value":"oauth"}},{"source":"set-variable","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3006504","data":{"message":"Context variable was successfully set.","name":"oauth-audience","value":"api://d757618b-0d60-4838-ac67-6d5568cd2b75"}},{"source":"include-fragment","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3006600","data":"Entering policy fragment 'PF-SourceAuth'"},{"source":"choose","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3006778","data":{"message":"Expression was successfully evaluated.","expression":"((string)context.Variables[\"sourceauth\"] == \"oauth\")","value":true}}],"on-error":[{"source":"validate-jwt","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3009728","data":{"message":"JWT Validation Failed: JWT not present.."}},{"source":"include-fragment","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3009804","data":"Leaving policy fragment 'PF-SourceAuth'"},{"source":"include-fragment","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3009901","data":"Entering policy fragment 'PF-Logging'"},{"source":"choose","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3010004","data":{"message":"Expression was successfully evaluated.","expression":"context.Response.StatusCode < 400","value":false}},{"source":"choose","timestamp":"2026-04-14T14:29:03.5930638Z","elapsed":"00:00:00.3010051","data":{"message":"Expression was successfully evaluated.","expression":"context.Response.StatusCode == 401 && context.LastError.Reason == \"TokenNotPresent\"","value":true}},{"source":"log-to-eventhub","timestamp":"2026-04-14T14:29:03.6086193Z","elapsed":"00:00:00.3025266","data":{"message":"Log to EventHub Policy was successfully processed"}},{"source":"include-fragment","timestamp":"2026-04-14T14:29:03.6086193Z","elapsed":"00:00:00.3025494","data":"Leaving policy fragment 'PF-Logging'"},{"source":"include-fragment","timestamp":"2026-04-14T14:29:03.6086193Z","elapsed":"00:00:00.3025679","data":"Entering policy fragment 'PF-ErrorHandling'"},{"source":"set-status","timestamp":"2026-04-14T14:29:03.6086193Z","elapsed":"00:00:00.3031325","data":{"message":["Response status code was set to 401","Response status reason was set to 'TokenNotPresent'"]}},{"source":"set-header","timestamp":"2026-04-14T14:29:03.6086193Z","elapsed":"00:00:00.3031612","data":{"message":"Specified value was assigned to the header (see below).","header":{"name":"Content-Type","value":"application/json"}}},{"source":"set-body","timestamp":"2026-04-14T14:29:03.6086193Z","elapsed":"00:00:00.3031987","data":{"message":"Expression was successfully evaluated.","expression":"return Newtonsoft.Json.JsonConvert.SerializeObject(new { errorCode = \"401\", ... });","value":"{\"errorCode\":\"401\",\"errorReason\":\"Unauthorized\",\"errorDescription\":\"JWT token is not present in the request.\"}"}},{"source":"return-response","timestamp":"2026-04-14T14:29:03.6086193Z","elapsed":"00:00:00.3032425","data":{"message":"Return response was applied","response":{"status":{"code":"Unauthorized","reason":"TokenNotPresent"},"headers":[{"name":"Content-Type","value":"application/json"},{"name":"Content-Length","value":"110"}]}}}],"outbound":[{"source":"include-fragment","timestamp":"2026-04-14T14:29:03.6086193Z","elapsed":"00:00:00.3032478","data":"Leaving policy fragment 'PF-ErrorHandling'"},{"source":"transfer-response","timestamp":"2026-04-14T14:29:03.6086193Z","elapsed":"00:00:00.3036255","data":{"message":"Response has been sent to the caller in full"}}]}};
+
+/* ══ STAGE CONFIG ══ */
+const STAGE_CONF = {
+  'inbound':  { label:'Inbound',  color:'#539bf5', barC:'#539bf5' },
+  'on-error': { label:'On Error', color:'#e5534b', barC:'#e5534b' },
+  'outbound': { label:'Outbound', color:'#57ab5a', barC:'#57ab5a' },
+  'backend':  { label:'Backend',  color:'#c69026', barC:'#c69026' }
+};
+
+// Per-source color hints
+function srcColor(source, stage) {
+  if (stage === 'on-error') return '#e5534b';
+  const map = {
+    'send-request': '#c69026', 'return-response': '#e5534b', 'validate-jwt': '#e5534b',
+    'include-fragment': '#986ee2', 'transfer-response': '#57ab5a',
+    'set-variable': '#539bf5', 'set-header': '#539bf5', 'set-method': '#539bf5',
+    'set-body': '#539bf5', 'set-status': '#e5534b', 'choose': '#768390',
+    'cors': '#768390', 'log-to-eventhub': '#c69026', 'api-inspector': '#768390'
+  };
+  return map[source] || '#768390';
+}
+
+let T = null, selStage = null, selIdx = null;
+
+/* ══ HELPERS ══ */
+function esc(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escNull(s) {
+  if (s === null || s === undefined) return '<span style="color:var(--tx3)">null</span>';
+  return esc(s);
+}
+
+// "00:00:00.3036255" → ms
+function toMs(str) {
+  if (!str) return 0;
+  const p = str.split(':');
+  if (p.length !== 3) return 0;
+  return (parseFloat(p[0])*3600 + parseFloat(p[1])*60 + parseFloat(p[2])) * 1000;
+}
+
+function summarise(data) {
+  if (data === null || data === undefined) return '';
+  if (typeof data === 'string') return data.substring(0,130);
+  if (data.message) {
+    const m = Array.isArray(data.message) ? data.message[0] : data.message;
+    return String(m).substring(0,130);
+  }
+  if (data.request?.url) return '\u2192 ' + data.request.url;
+  if (data.response?.status) return 'HTTP ' + data.response.status.code + ' ' + data.response.status.reason;
+  if (data.configuration) return (data.configuration.operation?.method||'') + ' ' + (data.configuration.api?.from||'');
+  if (data.header) return data.header.name + ': ' + String(data.header.value).substring(0,80);
+  if (data.name !== undefined) return data.name + ' = ' + JSON.stringify(data.value).substring(0,60);
+  return JSON.stringify(data).substring(0,130);
+}
+
+function isBadEntry(entry, stage) {
+  if (stage === 'on-error') return true;
+  const d = entry.data;
+  if (!d) return false;
+  const msg = Array.isArray(d.message) ? d.message.join(' ') : String(d.message||'');
+  if (msg.toLowerCase().includes('fail') || msg.toLowerCase().includes('error') || msg.toLowerCase().includes('invalid')) return true;
+  if (d.response?.status?.code >= 400) return true;
+  if (d.value?.error) return true;
+  return false;
+}
+
+/* ══ LOAD / RESET ══ */
+function loadSample() { document.getElementById('trace-in').value = JSON.stringify(SAMPLE, null, 2); }
+
+function reset() {
+  document.getElementById('screen-trace').style.display = 'none';
+  document.getElementById('screen-paste').style.display = 'flex';
+  T = null; selStage = null; selIdx = null;
+}
+
+function go() {
+  const raw = document.getElementById('trace-in').value.trim();
+  const e = document.getElementById('err-msg');
+  e.textContent = '';
+  if (!raw) { e.textContent = 'Paste a trace JSON first.'; return; }
+  try { T = JSON.parse(raw); } catch(ex) { e.textContent = 'Invalid JSON: ' + ex.message; return; }
+  if (!T.traceEntries) { e.textContent = 'Missing traceEntries. Use the real APIM trace format.'; return; }
+  build();
+  document.getElementById('screen-paste').style.display = 'none';
+  document.getElementById('screen-trace').style.display = 'flex';
+  switchViewDirect('flow');
+}
+
+/* ══ BUILD ══ */
+function build() {
+  const te = T.traceEntries || {};
+  const stageKeys = Object.keys(te);
+
+  // Extract request info
+  const inbound = te['inbound'] || [];
+  const onErr = te['on-error'] || [];
+  const outbound = te['outbound'] || [];
+
+  let reqMethod = '', reqUrl = '';
+  for (const e of inbound) {
+    if (e.source === 'api-inspector' && e.data?.request) {
+      reqMethod = e.data.request.method || '';
+      reqUrl    = e.data.request.url || '';
+      break;
+    }
+  }
+
+  // Find response status
+  let respStatus = null;
+  for (const e of [...onErr, ...outbound]) {
+    if (e.source === 'return-response' && e.data?.response?.status) { respStatus = e.data.response.status; break; }
+    if (e.source === 'set-status' && e.data?.message) {
+      const msgs = Array.isArray(e.data.message) ? e.data.message : [e.data.message];
+      for (const m of msgs) { const mc = String(m).match(/set to (\d+)/i); if (mc) { respStatus = { code: parseInt(mc[1]), reason:'' }; } }
+    }
+  }
+
+  // Max elapsed across all entries
+  let maxMs = 0;
+  for (const sk of stageKeys) { for (const en of (te[sk]||[])) { const ms = toMs(en.elapsed); if (ms > maxMs) maxMs = ms; } }
+
+  // Nav
+  document.getElementById('nav-svc').textContent = T.serviceName || T.traceId || '';
+  document.getElementById('tb-tid').textContent  = 'Trace: ' + (T.traceId || '—');
+  document.getElementById('tb-url').textContent  = reqUrl;
+
+  const mEl = document.getElementById('tb-method');
+  if (reqMethod) { mEl.textContent = reqMethod; mEl.style.display = ''; } else { mEl.style.display = 'none'; }
+
+  const sEl = document.getElementById('tb-status');
+  if (respStatus) {
+    const n = parseInt(respStatus.code);
+    sEl.textContent = respStatus.code + (respStatus.reason ? ' ' + respStatus.reason : '');
+    sEl.className = 'pill ' + (n < 300 ? 'pill-green' : n < 400 ? 'pill-amber' : 'pill-red');
+    sEl.style.display = '';
+  } else { sEl.style.display = 'none'; }
+
+  // Stats
+  document.getElementById('stats-row').innerHTML = [
+    { l:'Total elapsed',   v: maxMs.toFixed(1) + 'ms', color:'var(--tx)' },
+    { l:'Inbound steps',   v: inbound.length,           color:'var(--blue)' },
+    { l:'On-error steps',  v: onErr.length,             color: onErr.length > 0 ? 'var(--red)' : 'var(--tx)' },
+    { l:'Outbound steps',  v: outbound.length,          color:'var(--green)' }
+  ].map(s => `<div class="stat-cell"><div class="stat-lbl">${s.l}</div><div class="stat-val" style="color:${s.color}">${s.v}</div></div>`).join('');
+
+  // Error banner
+  const eb = document.getElementById('err-banner');
+  if (onErr.length > 0) {
+    const jwtErr = onErr.find(e => e.source === 'validate-jwt');
+    document.getElementById('err-banner-text').textContent = jwtErr ? summarise(jwtErr.data) : onErr.length + ' on-error steps triggered.';
+    eb.classList.add('on');
+  } else { eb.classList.remove('on'); }
+
+  buildFlow(te, maxMs);
+  buildWaterfall(te, maxMs);
+  buildReqRes(T);
+}
+
+/* ══ FLOW ══ */
+function buildFlow(te, maxMs) {
+  const stageKeys = Object.keys(te);
+  const active = stageKeys.filter(k => (te[k]||[]).length > 0);
+  let html = '';
+
+  active.forEach((sk, si) => {
+    const entries = te[sk] || [];
+    const conf = STAGE_CONF[sk] || { label: sk, color: '#768390', barC: '#768390' };
+
+    html += `<div class="stage-band">
+      <div class="stage-band-hd" style="border-left:2px solid ${conf.color};padding-left:10px">
+        <div class="stage-dot" style="background:${conf.color}"></div>
+        <span class="stage-lbl" style="color:${conf.color}">${conf.label}</span>
+        <span class="stage-count">${entries.length} steps</span>
+      </div>`;
+
+    entries.forEach((entry, i) => {
+      const ms = toMs(entry.elapsed);
+      const pct = maxMs > 0 ? Math.max((ms / maxMs) * 100, 1).toFixed(1) : 1;
+      const color = srcColor(entry.source, sk);
+      const bad = isBadEntry(entry, sk);
+      const isSel = selStage === sk && selIdx === i;
+      const summary = summarise(entry.data);
+
+      html += `<div class="entry-row${isSel?' sel':''}" id="er-${sk.replace(/[^a-zA-Z0-9]/g,'_')}-${i}" onclick="selectEntry('${sk}',${i})">
+        <div class="entry-accent" style="background:${color}"></div>
+        <div class="entry-body">
+          <div class="entry-top">
+            <div class="entry-sdot" style="background:${bad?'var(--red)':color}"></div>
+            <span class="entry-source" style="color:${bad?'var(--red)':color}">${esc(entry.source)}</span>
+            <span class="entry-elapsed">${ms.toFixed(2)}ms</span>
+          </div>
+          <div class="entry-bar-wrap"><div class="entry-bar" style="width:${pct}%;background:${color}"></div></div>
+          <div class="entry-summary">${esc(summary)}</div>
+        </div>
+      </div>`;
+    });
+
+    html += '</div>';
+
+    if (si < active.length - 1) {
+      const nextConf = STAGE_CONF[active[si+1]] || { label: active[si+1] };
+      html += `<div class="stage-conn">
+        <div class="conn-line"></div>
+        <div class="conn-arrow">
+          <svg viewBox="0 0 10 10"><line x1="5" y1="1" x2="5" y2="9"/><polyline points="2.5,6.5 5,9 7.5,6.5"/></svg>
+          ${nextConf.label}
+        </div>
+        <div class="conn-line"></div>
+      </div>`;
+    }
+  });
+
+  document.getElementById('pipeline-col').innerHTML = html;
+}
+
+/* ══ SELECT ENTRY ══ */
+function selectEntry(stage, idx) {
+  selStage = stage; selIdx = idx;
+  document.querySelectorAll('.entry-row').forEach(r => r.classList.remove('sel'));
+  const el = document.getElementById('er-' + stage.replace(/[^a-zA-Z0-9]/g,'_') + '-' + idx);
+  if (el) el.classList.add('sel');
+
+  const entry = (T.traceEntries || {})[stage]?.[idx];
+  if (!entry) return;
+
+  const color = srcColor(entry.source, stage);
+  const bad = isBadEntry(entry, stage);
+  const ms = toMs(entry.elapsed);
+  const conf = STAGE_CONF[stage] || { label: stage };
+
+  // Detail header
+  document.getElementById('detail-hd').innerHTML = `
+    <div class="detail-hd-icon" style="background:${bad?'var(--red-bg)':'var(--bg4)'};border-color:${bad?'var(--red-bdr)':'var(--line)'}">
+      <svg viewBox="0 0 12 12" stroke="${bad?'var(--red)':color}"><rect x="1.5" y="1.5" width="9" height="9" rx="1.5"/><line x1="3.5" y1="4.5" x2="8.5" y2="4.5"/><line x1="3.5" y1="6.5" x2="8.5" y2="6.5"/><line x1="3.5" y1="8.5" x2="6" y2="8.5"/></svg>
+    </div>
+    <span class="detail-hd-source" style="color:${bad?'var(--red)':color}">${esc(entry.source)}</span>
+    <span class="detail-hd-stage">/ ${conf.label}</span>
+    <span class="detail-hd-elapsed">${ms.toFixed(4)}ms</span>
+  `;
+
+  const data = entry.data;
+
+  /* —— TAB: Details —— */
+  let infoHtml = `<div class="kv-sec">
+    <div class="kv-sec-title">Identity</div>
+    <div class="kv-row"><div class="kv-k">source</div><div class="kv-v" style="color:${bad?'var(--red)':color}">${esc(entry.source)}</div></div>
+    <div class="kv-row"><div class="kv-k">stage</div><div class="kv-v"><span class="pill ${stage==='on-error'?'pill-red':stage==='outbound'?'pill-green':stage==='inbound'?'pill-blue':'pill-amber'}">${conf.label}</span></div></div>
+    <div class="kv-row"><div class="kv-k">elapsed</div><div class="kv-v amber">${ms.toFixed(4)}ms</div></div>
+    ${entry.timestamp ? `<div class="kv-row"><div class="kv-k">timestamp</div><div class="kv-v dim">${esc(entry.timestamp)}</div></div>` : ''}
+  </div>`;
+
+  if (typeof data === 'string') {
+    infoHtml += `<div class="kv-sec"><div class="kv-sec-title">Message</div><div style="font-size:12px;font-family:var(--mono);color:var(--tx2);line-height:1.6;word-break:break-word">${esc(data)}</div></div>`;
+  } else if (data) {
+    if (data.message !== undefined) {
+      const msgs = Array.isArray(data.message) ? data.message : [data.message];
+      const isErr = msgs.some(m => String(m).toLowerCase().match(/fail|error|invalid|not present/));
+      infoHtml += `<div class="kv-sec"><div class="kv-sec-title">Message</div>${msgs.map(m =>
+        `<div style="font-size:12px;font-family:var(--mono);color:${isErr?'var(--red)':'var(--tx2)'};line-height:1.6;margin-bottom:4px;word-break:break-word">${esc(m)}</div>`
+      ).join('')}</div>`;
+    }
+    if (data.expression !== undefined) {
+      infoHtml += `<div class="kv-sec"><div class="kv-sec-title">Expression</div><pre class="cb">${esc(data.expression)}</pre></div>`;
+    }
+    if (data.name !== undefined && !data.header) {
+      infoHtml += `<div class="kv-sec"><div class="kv-sec-title">Variable</div>
+        <div class="kv-row"><div class="kv-k">name</div><div class="kv-v blue">${esc(data.name)}</div></div>
+        <div class="kv-row"><div class="kv-k">value</div><div class="kv-v ${data.value===null?'dim':''}">${data.value===null?'<span style="color:var(--tx3)">null</span>':esc(typeof data.value==='object'?JSON.stringify(data.value,null,2):String(data.value))}</div></div>
+      </div>`;
+    }
+    if (data.header) {
+      infoHtml += `<div class="kv-sec"><div class="kv-sec-title">Header assigned</div>
+        <div class="kv-row"><div class="kv-k">name</div><div class="kv-v blue">${esc(data.header.name)}</div></div>
+        <div class="kv-row"><div class="kv-k">value</div><div class="kv-v">${esc(data.header.value)}</div></div>
+      </div>`;
+    }
+    if (data.configuration) {
+      const cfg = data.configuration;
+      infoHtml += `<div class="kv-sec"><div class="kv-sec-title">API configuration</div>
+        <div class="kv-row"><div class="kv-k">api.from</div><div class="kv-v">${esc(cfg.api?.from)}</div></div>
+        <div class="kv-row"><div class="kv-k">revision</div><div class="kv-v dim">${esc(cfg.api?.revision)}</div></div>
+        <div class="kv-row"><div class="kv-k">op.method</div><div class="kv-v">${esc(cfg.operation?.method)}</div></div>
+        <div class="kv-row"><div class="kv-k">uriTemplate</div><div class="kv-v dim">${esc(cfg.operation?.uriTemplate)}</div></div>
+        <div class="kv-row"><div class="kv-k">user</div><div class="kv-v dim">${esc(cfg.user)}</div></div>
+      </div>`;
+    }
+    if (data.request?.url) {
+      infoHtml += `<div class="kv-sec"><div class="kv-sec-title">Forwarded request</div>
+        <div class="kv-row"><div class="kv-k">method</div><div class="kv-v">${esc(data.request.method)}</div></div>
+        <div class="kv-row"><div class="kv-k">url</div><div class="kv-v blue" style="word-break:break-all">${esc(data.request.url)}</div></div>
+        ${data.message?`<div class="kv-row"><div class="kv-k">note</div><div class="kv-v dim">${esc(Array.isArray(data.message)?data.message[0]:data.message)}</div></div>`:''}
+      </div>`;
+    }
+    if (data.response?.status) {
+      const c = data.response.status; const n = parseInt(c.code);
+      infoHtml += `<div class="kv-sec"><div class="kv-sec-title">Response status</div>
+        <div class="kv-row"><div class="kv-k">code</div><div class="kv-v"><span class="pill ${n<300?'pill-green':n<400?'pill-amber':'pill-red'}">${esc(c.code)} ${esc(c.reason)}</span></div></div>
+      </div>`;
+    }
+    if (data.statusCode || data.statusReason) {
+      infoHtml += `<div class="kv-sec"><div class="kv-sec-title">Backend result</div>
+        <div class="kv-row"><div class="kv-k">statusCode</div><div class="kv-v red">${esc(data.statusCode)}</div></div>
+        <div class="kv-row"><div class="kv-k">statusReason</div><div class="kv-v red">${esc(data.statusReason)}</div></div>
+      </div>`;
+    }
+    if (data.value !== undefined && data.name === undefined && data.header === undefined) {
+      const pretty = typeof data.value === 'object' ? JSON.stringify(data.value, null, 2) : String(data.value);
+      infoHtml += `<div class="kv-sec"><div class="kv-sec-title">Evaluated value</div><pre class="cb">${esc(pretty)}</pre></div>`;
+    }
+  }
+  document.getElementById('tab-info').innerHTML = infoHtml;
+
+  /* —— TAB: Payload —— */
+  let payloadHtml = '';
+  if (data?.value !== undefined && data.value !== null) {
+    const pretty = typeof data.value === 'object' ? JSON.stringify(data.value, null, 2) : String(data.value);
+    payloadHtml = `<pre class="cb">${esc(pretty)}</pre>`;
+  } else if (typeof data === 'string') {
+    payloadHtml = `<pre class="cb">${esc(data)}</pre>`;
+  } else if (data?.response) {
+    payloadHtml = `<pre class="cb">${esc(JSON.stringify(data.response, null, 2))}</pre>`;
+  } else {
+    payloadHtml = '<div class="empty-msg" style="height:100px"><p>No payload for this step</p></div>';
+  }
+  document.getElementById('tab-payload').innerHTML = payloadHtml;
+
+  /* —— TAB: Headers —— */
+  const hdrs = data?.request?.headers || data?.response?.headers || data?.headers || null;
+  if (hdrs && Array.isArray(hdrs) && hdrs.length) {
+    document.getElementById('tab-headers').innerHTML = `<table class="hdrs-table">${hdrs.map(h=>
+      `<tr><td>${esc(h.name)}</td><td>${esc(h.value)}</td></tr>`
+    ).join('')}</table>`;
+  } else {
+    document.getElementById('tab-headers').innerHTML = '<div class="empty-msg" style="height:100px"><p>No headers for this step</p></div>';
+  }
+
+  dTab('info', document.querySelector('.detail-tabs .dtab'));
+}
+
+function dTab(name, btn) {
+  ['info','payload','headers'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t === name ? 'block' : 'none';
+  });
+  document.querySelectorAll('.detail-tabs .dtab').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+}
+
+/* ══ WATERFALL ══ */
+function buildWaterfall(te, maxMs) {
+  const stageKeys = Object.keys(te).filter(k => (te[k]||[]).length > 0);
+  const tot = maxMs || 1;
+  let html = '<div class="wf-legend">';
+  stageKeys.forEach(sk => {
+    const c = STAGE_CONF[sk] || { label: sk, color:'#768390' };
+    html += `<div class="wf-leg"><div class="wf-leg-dot" style="background:${c.color}"></div>${c.label}</div>`;
+  });
+  html += '</div>';
+
+  html += `<div class="wf-axis-row">
+    <div class="wf-name-hd">Step</div>
+    <div class="wf-track-hd">${[0,25,50,75,100].map(p=>`<span class="wf-ax-lbl">${(tot*p/100).toFixed(1)}ms</span>`).join('')}</div>
+    <div class="wf-dur-hd"></div>
+  </div>`;
+
+  stageKeys.forEach(sk => {
+    const entries = te[sk] || [];
+    const c = STAGE_CONF[sk] || { label: sk, color:'#768390', barC:'#768390' };
+    html += `<div class="wf-stage-block">
+      <div class="wf-stage-hd">
+        <div class="wf-stage-dot" style="background:${c.color}"></div>
+        <span class="wf-stage-lbl" style="color:${c.color}">${c.label}</span>
+        <span class="wf-stage-total">${entries.length} steps</span>
+      </div>`;
+    entries.forEach((entry, i) => {
+      const ms = toMs(entry.elapsed);
+      // elapsed is cumulative from start → bar represents proportion of total time elapsed
+      const wPct = Math.max((ms / tot) * 100, 0.4).toFixed(2);
+      const color = srcColor(entry.source, sk);
+      html += `<div class="wf-row" onclick="switchViewDirect('flow');selectEntry('${sk}',${i})">
+        <div class="wf-row-name" title="${esc(entry.source)}">${esc(entry.source)}</div>
+        <div class="wf-track"><div class="wf-seg" style="left:0;width:${wPct}%;background:${color}"></div></div>
+        <div class="wf-dur">${ms.toFixed(2)}ms</div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+
+  document.getElementById('view-waterfall').innerHTML = html;
+}
+
+/* ══ REQ / RES ══ */
+function buildReqRes(T) {
+  const te = T.traceEntries || {};
+  const inbound = te['inbound'] || [];
+  const onErr   = te['on-error'] || [];
+  const outbound = te['outbound'] || [];
+  const all = [...inbound, ...onErr, ...outbound];
+
+  const reqEntry  = inbound.find(e => e.source === 'api-inspector' && e.data?.request);
+  const cfgEntry  = inbound.find(e => e.source === 'api-inspector' && e.data?.configuration);
+  const rrEntry   = all.find(e => e.source === 'return-response');
+  const jwtErr    = onErr.find(e => e.source === 'validate-jwt');
+  const bodyEntry = onErr.find(e => e.source === 'set-body' && e.data?.value && typeof e.data.value === 'string' && e.data.value.startsWith('{'));
+  const backReqEntry = inbound.find(e => e.source === 'send-request' && e.data?.request?.url);
+  const backResEntry = inbound.find(e => e.source === 'send-request' && e.data?.response);
+
+  let html = '<div class="rr-grid">';
+
+  /* REQUEST */
+  html += `<div class="rr-card">
+    <div class="rr-card-hd"><svg viewBox="0 0 12 12"><path d="M2 6h8M6 3l3 3-3 3"/></svg> Inbound request</div>
+    <div class="rr-card-body">`;
+  if (reqEntry) {
+    const req = reqEntry.data.request;
+    html += `<div class="rr-sec"><div class="rr-sec-title">Request line</div>
+      <div class="kv-row"><div class="kv-k">method</div><div class="kv-v"><span class="pill pill-blue">${esc(req.method)}</span></div></div>
+      <div class="kv-row"><div class="kv-k">url</div><div class="kv-v blue" style="word-break:break-all">${esc(req.url)}</div></div>
+      <div class="kv-row"><div class="kv-k">scheme</div><div class="kv-v dim">${esc(req.scheme?.received)}</div></div>
+    </div>`;
+    if (req.headers?.length) {
+      html += `<div class="rr-sec"><div class="rr-sec-title">Headers (${req.headers.length})</div>
+        <table class="hdrs-table">${req.headers.map(h=>`<tr><td>${esc(h.name)}</td><td style="max-width:260px;overflow-wrap:anywhere">${esc(h.value)}</td></tr>`).join('')}</table>
+      </div>`;
+    }
+  } else { html += '<div style="color:var(--tx3);font-size:12px">No inbound request detail found.</div>'; }
+
+  if (cfgEntry) {
+    const cfg = cfgEntry.data.configuration;
+    html += `<div class="rr-sec" style="margin-top:12px"><div class="rr-sec-title">API config</div>
+      <div class="kv-row"><div class="kv-k">api.from</div><div class="kv-v">${esc(cfg.api?.from)}</div></div>
+      <div class="kv-row"><div class="kv-k">revision</div><div class="kv-v dim">${esc(cfg.api?.revision)}</div></div>
+      <div class="kv-row"><div class="kv-k">op.method</div><div class="kv-v">${esc(cfg.operation?.method)}</div></div>
+      <div class="kv-row"><div class="kv-k">uriTemplate</div><div class="kv-v dim">${esc(cfg.operation?.uriTemplate)}</div></div>
+    </div>`;
+  }
+  html += '</div></div>';
+
+  /* RESPONSE */
+  let respCode = '', respReason = '';
+  if (rrEntry?.data?.response?.status) { respCode = rrEntry.data.response.status.code; respReason = rrEntry.data.response.status.reason; }
+  const numCode = parseInt(respCode);
+
+  html += `<div class="rr-card">
+    <div class="rr-card-hd"><svg viewBox="0 0 12 12"><path d="M10 6H2M6 3L3 6l3 3"/></svg> Response</div>
+    <div class="rr-card-body">`;
+
+  if (respCode) {
+    html += `<div class="rr-sec"><div class="rr-sec-title">Status</div>
+      <div class="kv-row"><div class="kv-k">code</div><div class="kv-v"><span class="pill ${numCode<300?'pill-green':numCode<400?'pill-amber':'pill-red'}">${esc(respCode)}</span></div></div>
+      <div class="kv-row"><div class="kv-k">reason</div><div class="kv-v ${numCode>=400?'red':''}">${esc(respReason)}</div></div>
+    </div>`;
+  }
+  if (jwtErr?.data?.message) {
+    html += `<div class="rr-sec"><div class="rr-sec-title" style="color:var(--red)">Error</div>
+      <div style="font-size:12px;font-family:var(--mono);color:var(--red);line-height:1.6;word-break:break-word">${esc(Array.isArray(jwtErr.data.message)?jwtErr.data.message.join(' '):jwtErr.data.message)}</div>
+    </div>`;
+  }
+  if (rrEntry?.data?.response?.headers?.length) {
+    html += `<div class="rr-sec"><div class="rr-sec-title">Response headers</div>
+      <table class="hdrs-table">${rrEntry.data.response.headers.map(h=>`<tr><td>${esc(h.name)}</td><td>${esc(h.value)}</td></tr>`).join('')}</table>
+    </div>`;
+  }
+  if (bodyEntry?.data?.value) {
+    let pretty = bodyEntry.data.value;
+    try { pretty = JSON.stringify(JSON.parse(pretty), null, 2); } catch(e) {}
+    html += `<div class="rr-sec"><div class="rr-sec-title">Response body</div><pre class="cb">${esc(pretty)}</pre></div>`;
+  }
+  html += '</div></div>';
+
+  /* BACKEND CALL */
+  if (backReqEntry) {
+    const bReq = backReqEntry.data.request;
+    const bRes = backResEntry?.data?.response;
+    const bCode = bRes?.status?.code;
+    const bN = parseInt(bCode);
+    html += `<div class="rr-card" style="grid-column:1/-1">
+      <div class="rr-card-hd"><svg viewBox="0 0 12 12"><rect x="2" y="2" width="8" height="8" rx="1.5"/><line x1="6" y1="5" x2="6" y2="7"/><circle cx="6" cy="3.5" r=".3" fill="currentColor"/></svg> Backend service call</div>
+      <div class="rr-card-body" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div class="rr-sec-title" style="margin-bottom:8px">Request</div>
+          <div class="kv-row"><div class="kv-k">method</div><div class="kv-v"><span class="pill pill-amber">${esc(bReq.method)}</span></div></div>
+          <div class="kv-row"><div class="kv-k">url</div><div class="kv-v blue" style="word-break:break-all">${esc(bReq.url)}</div></div>
+          ${bReq.headers?.length ? `<div style="margin-top:8px"><div class="rr-sec-title" style="margin-bottom:6px">Headers</div><table class="hdrs-table">${bReq.headers.map(h=>`<tr><td>${esc(h.name)}</td><td>${esc(h.value)}</td></tr>`).join('')}</table></div>` : ''}
+        </div>
+        <div>
+          <div class="rr-sec-title" style="margin-bottom:8px">Response</div>
+          ${bRes ? `<div class="kv-row"><div class="kv-k">status</div><div class="kv-v"><span class="pill ${bN<300?'pill-green':bN<400?'pill-amber':'pill-red'}">${esc(bCode)} ${esc(bRes.status?.reason)}</span></div></div>
+          ${bRes.headers?.length ? `<div style="margin-top:8px"><div class="rr-sec-title" style="margin-bottom:6px">Headers</div><table class="hdrs-table">${bRes.headers.map(h=>`<tr><td>${esc(h.name)}</td><td>${esc(h.value)}</td></tr>`).join('')}</table></div>` : ''}` : '<div style="color:var(--tx3);font-size:12px">No backend response captured.</div>'}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  /* TRACE META */
+  html += `<div class="rr-card" style="grid-column:1/-1">
+    <div class="rr-card-hd"><svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5"/><line x1="6" y1="4" x2="6" y2="6.5"/><circle cx="6" cy="8.5" r=".4" fill="currentColor"/></svg> Trace metadata</div>
+    <div class="rr-card-body" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px 20px">
+      <div class="kv-row"><div class="kv-k">traceId</div><div class="kv-v">${esc(T.traceId)}</div></div>
+      <div class="kv-row"><div class="kv-k">serviceName</div><div class="kv-v">${esc(T.serviceName)}</div></div>
+      <div class="kv-row"><div class="kv-k">sections</div><div class="kv-v dim">${esc(Object.keys(T.traceEntries||{}).join(', '))}</div></div>
+    </div>
+  </div>`;
+
+  html += '</div>';
+  document.getElementById('view-reqres').innerHTML = html;
+}
+
+/* ══ VIEW SWITCHING ══ */
+function switchView(name, btn) {
+  switchViewDirect(name);
+  document.querySelectorAll('.vtab').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+}
+function switchViewDirect(name) {
+  document.getElementById('view-flow').style.display      = name === 'flow'      ? 'flex'  : 'none';
+  document.getElementById('view-waterfall').style.display = name === 'waterfall' ? 'flex'  : 'none';
+  document.getElementById('view-reqres').style.display    = name === 'reqres'    ? 'flex'  : 'none';
+  document.querySelectorAll('.vtab').forEach(b => b.classList.remove('on'));
+  const btn = document.getElementById('vtab-' + name);
+  if (btn) btn.classList.add('on');
+}
+</script>
+</body>
+</html>
